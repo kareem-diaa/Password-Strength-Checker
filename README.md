@@ -12,11 +12,11 @@
 
 | # | Name | Student ID | Role |
 |---|------|-----------|------|
-| 1 | Kareem Diaa Helal Fouad | 240100828 | Team Lead (+ Stage 4 coordination & measurements) |
-| 2 | Yousef Walid Mohamed Ahmed | 240100013 | _TBD_ |
-| 3 | Mustafa Nabil Abdelraheem Abdelrahman | 240103415 | _TBD_ |
-| 4 | Anwar Mohamed Anwar Nebeshy | 240102735 | _TBD_ |
-| 5 | Seif Elhussein Mohamed Shorbagy | 240103306 | _TBD_ |
+| 1 | Kareem Diaa Helal Fouad | 240100828 | Kubernetes Engineer & Team Lead |
+| 2 | Yousef Walid Mohamed Ahmed | 240100013 | Application Developer |
+| 3 | Mustafa Nabil Abdelraheem Abdelrahman | 240103415 | Container Engineer |
+| 4 | Anwar Mohamed Anwar Nebeshy | 240102735 | VM Engineer |
+| 5 | Seif Elhussein Mohamed Shorbagy | 240103306 | Documentation Engineer |
 
 Roles to assign: **Application Developer**, **VM Engineer**, **Container Engineer**, **Kubernetes Engineer**.
 Integration, measurement and documentation duties are shared (team of five).
