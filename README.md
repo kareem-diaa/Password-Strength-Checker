@@ -18,9 +18,6 @@
 | 4 | Anwar Mohamed Anwar Nebeshy | 240102735 | VM Engineer |
 | 5 | Seif Elhussein Mohamed Shorbagy | 240103306 | Documentation Engineer |
 
-Roles to assign: **Application Developer**, **VM Engineer**, **Container Engineer**, **Kubernetes Engineer**.
-Integration, measurement and documentation duties are shared (team of five).
-
 ---
 
 ## Architecture (two components)
