@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Password Strength Checker</title>
+  <style>
+    :root { color-scheme: light dark; --accent: #2f6fde; --muted: #6b7280; --line: #d1d5db; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+           display: grid; place-items: start center; min-height: 100vh; padding: 3rem 1rem; }
+    main { width: 100%; max-width: 32rem; }
+    h1 { font-size: 1.5rem; margin: 0 0 .25rem; }
+    p.lead { color: var(--muted); margin: 0 0 1.5rem; }
+    form { display: flex; gap: .5rem; }
+    input[type=text] { flex: 1; font: inherit; padding: .6rem .75rem;
+           border: 1px solid var(--line); border-radius: .5rem; background: transparent; color: inherit; }
+    input[type=text]:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+    button { font: inherit; padding: .6rem 1rem; border: 0; border-radius: .5rem;
+             background: var(--accent); color: #fff; cursor: pointer; }
+    .panel { margin-top: 1.5rem; padding: 1rem 1.25rem; border: 1px solid var(--line); border-radius: .75rem; }
+    .verdict { display: flex; justify-content: space-between; align-items: baseline; }
+    .label { font-size: 1.25rem; font-weight: 600; }
+    .score { color: var(--muted); font-variant-numeric: tabular-nums; }
+    meter { width: 100%; height: .75rem; margin: .5rem 0 0; }
+    ul { margin: 1rem 0 0; padding-left: 1.25rem; }
+    li + li { margin-top: .4rem; }
+    .error { border-color: #dc2626; color: #dc2626; }
+    footer { margin-top: 2rem; font-size: .85rem; color: var(--muted); }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Password Strength Checker</h1>
+  <p class="lead">Checked on the server and never stored, logged, or shown back to you.</p>
+
+  <form method="post" action="/" autocomplete="off">
+    <label for="password" hidden>Password</label>
+    <input type="text" id="password" name="password" maxlength="{{ max_length }}"
+           placeholder="Type a password" autocomplete="off" autocapitalize="off"
+           spellcheck="false" autofocus>
+    <button type="submit">Check</button>
+  </form>
+
+  {% if error %}
+  <div class="panel error" role="alert">{{ error }}</div>
+  {% endif %}
+
+  {% if result %}
+  <section class="panel" aria-live="polite">
+    <div class="verdict">
+      <span class="label">{{ result.label }}</span>
+      <span class="score">{{ result.score }} / 100</span>
+    </div>
+    <meter min="0" max="100" low="40" high="60" optimum="100" value="{{ result.score }}"
+           aria-label="Strength score">{{ result.score }}</meter>
+    {% if result.suggestions %}
+    <ul>
+      {% for tip in result.suggestions %}<li>{{ tip }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  <footer>Length matters most. No composition rules, following NIST SP 800-63B.</footer>
+</main>
+</body>
+</html>

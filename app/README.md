@@ -1,42 +1,84 @@
 # Application – Password Strength Checker
 
-**Owner:** _TBD (Application Developer)_
+A single page where you type a password and get a strength label, a score (0–100) and suggestions. The password is checked on the server and **only exists in memory for one request**. It is never stored, logged, put in a cookie or session, or shown back on the page.
 
-## Scope (keep it small — extra features carry no marks)
-
-- `/` — form: user types a password, gets a score (Very weak → Strong) and the reasons
-- Checks:
-  - length (min 12 recommended)
-  - character classes: lowercase, uppercase, digits, symbols
-  - repeated / sequential patterns (`aaaa`, `1234`, `qwerty`)
-  - **found in the common-passwords list** (database lookup)
-- `/stats` — anonymous totals: number of checks, score distribution, % found in the common list, most frequently failed rule
-- `/health` — returns 200 (used by Kubernetes probes and start-up time measurement)
-- All configuration from environment variables (see `../.env.example`)
-
-## Why the database is needed (two communicating components)
-
-| Table | Contents | Contains the password? |
-|-------|----------|------------------------|
-| `common_passwords` | SHA-256 hashes of a public common-password list (e.g. top 10,000 from SecLists) | No — these are public passwords, not users' |
-| `checks` | `id, checked_at, length, score, has_lower, has_upper, has_digit, has_symbol, in_common_list` | **No** — only the result |
-
-## Privacy rules (this is the point of the project — be able to explain them)
-
-1. The password is **never written** to the database, logs or disk — not plain, not hashed.
-2. The common-list lookup compares a SHA-256 of the input against the table; the hash is used for the query and **then discarded**, never inserted.
-3. Send the form with **POST**, never GET (GET puts the password in the URL, Nginx access logs and browser history).
-4. Do not log request bodies in Flask, Gunicorn or Nginx.
-5. Never store the password in a cookie or session.
-
-## Planned files
+## Files
 
 ```
-app.py                    Flask application
-checker.py                Scoring logic (pure functions, easy to test)
-requirements.txt          flask, psycopg2-binary, gunicorn
-schema.sql                Tables: common_passwords, checks
-load_common.py            Loads the public list into common_passwords (hashed)
-data/common-passwords.txt Public list (cite source in the report)
-templates/                index.html, stats.html
+app.py              Flask app: GET / (form), POST / (check), GET /health
+checker.py          Scoring rules: a pure function evaluate(password) -> StrengthResult
+templates/index.html
+test_checker.py     Unit tests (scoring + web privacy checks)
+requirements.txt
 ```
+
+## Run locally
+
+```bash
+cd app
+python3 -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+python app.py                      # http://127.0.0.1:5000
+python -m unittest -v              # run the tests
+```
+
+## How scoring works (NIST SP 800-63B aligned)
+
+The full rules are in the docstring at the top of `checker.py`. In short:
+
+- **Length matters most.** Points come from the *effective length*, meaning the characters that really add guessing work.
+- **No composition rules.** Uppercase, digits and symbols are never required, and you lose nothing for leaving them out. Mixing character types gives a small bonus of at most 15 points.
+- **Patterns count for nothing.** Repeated characters (`aaa`), sequences (`abc`, `321`, `qwerty`) and repeated chunks (`abcabc`) add nothing to the effective length. A well-known password hidden inside a longer one counts as a single character.
+- **Common passwords** from the built-in list are capped at 5 points. This also catches simple variations like `P@ssw0rd!`.
+- Fewer than 8 characters is always **Very Weak**. Input over 128 characters is rejected with a generic message.
+
+| Score | 0–19 | 20–39 | 40–59 | 60–79 | 80–100 |
+|---|---|---|---|---|---|
+| Label | Very Weak | Weak | Fair | Strong | Very Strong |
+
+## Privacy rules (be able to explain these)
+
+1. The form uses **POST**. A GET would put the password in the URL, the server logs and the browser history.
+2. The password is never written to disk, a database, logs, cookies or the session. The template has no `value=` on the input, so the password is never shown on the page.
+3. Error pages show fixed text and never the exception or the input. Debug mode is always off, because its error pages show request data.
+4. Request bodies over 4 KB are refused before they are read (`MAX_CONTENT_LENGTH`).
+5. `Cache-Control: no-store`, a strict CSP, `Referrer-Policy: no-referrer` and HSTS are set on every response.
+6. Limit: Python can't securely wipe a string from memory. We drop our reference after scoring and keep no copies, but the memory is freed only when Python reclaims it.
+
+## Deploy behind HTTPS
+
+Run the app with Gunicorn on localhost and put Nginx in front to handle TLS:
+
+```bash
+gunicorn --bind 127.0.0.1:8000 --workers 2 app:app
+```
+
+Gunicorn writes no access log unless you ask for one, and it never logs request bodies.
+
+```nginx
+server {
+    listen 80;
+    server_name example.com;
+    return 301 https://$host$request_uri;          # force HTTPS
+}
+
+server {
+    listen 443 ssl;
+    server_name example.com;
+    ssl_certificate     /etc/letsencrypt/live/example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
+
+    client_max_body_size 4k;
+    # The default access log records only the request line (e.g. "POST /"), not the body.
+    # Never add $request_body to a log_format.
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+Get a free certificate with `sudo certbot --nginx -d example.com`. For a local VM without a domain, use a self-signed certificate made with `openssl req -x509 -nodes -newkey rsa:2048 -days 365 -keyout key.pem -out cert.pem`. Never commit `*.pem` or `*.key` files; `.gitignore` already excludes them.
